@@ -185,6 +185,77 @@
   window.addEventListener('beforeunload', ev => { if (SY.dirty || SY.busy) { ev.preventDefault(); ev.returnValue = ''; } });
   window.__gasSave = schedule;
 
+
+  /* ---------- Thông báo trên điện thoại (Firebase Cloud Messaging) ---------- */
+  const PK = 'hrm-push-' + MODE;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = () => !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
+  const loadJs = src => new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Không tải được ' + src)); document.head.appendChild(s); });
+  const PUSHX = window.__PUSH = {
+    // 'off' (chưa cấu hình) · 'unsupported' · 'ios-home' (iPhone: cần thêm vào Màn hình chính) · 'denied' · 'on' · 'ready' (có thể bật)
+    state() {
+      if (!window.__FCM || !window.__FCM.vapidKey || window.__GAS_IFRAME) return 'off';
+      if (isIOS && !standalone()) return 'ios-home';
+      if (!('serviceWorker' in navigator) || !('Notification' in window) || !('PushManager' in window)) return 'unsupported';
+      if (Notification.permission === 'denied') return 'denied';
+      return Notification.permission === 'granted' && ls.get(PK) ? 'on' : 'ready';
+    },
+    async messaging() {
+      await loadJs('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+      await loadJs('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+      if (!firebase.apps.length) firebase.initializeApp(window.__FCM.config);
+      const reg = await navigator.serviceWorker.register('sw.js');
+      await navigator.serviceWorker.ready;
+      const m = firebase.messaging();
+      if (!PUSHX._fg) {   // đang mở app: hiện ngay trong app và cập nhật dữ liệu
+        PUSHX._fg = true;
+        m.onMessage(p => { const d = p.data || p.notification || {}; toast((d.title ? d.title + ': ' : '') + (d.body || '')); if (SY.started) pull().catch(() => { }); });
+      }
+      return { m, reg };
+    },
+    async enable(quiet) {
+      const st = PUSHX.state(); if (st === 'off' || st === 'unsupported' || st === 'ios-home') throw new Error(st);
+      const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+      if (perm !== 'granted') throw new Error('Bạn chưa cho phép thông báo – bật lại trong Cài đặt của trình duyệt/điện thoại');
+      const { m, reg } = await PUSHX.messaging();
+      const t = await m.getToken({ vapidKey: window.__FCM.vapidKey, serviceWorkerRegistration: reg });
+      if (!t) throw new Error('Không lấy được mã thiết bị');
+      if (t !== ls.get(PK) || !quiet) await API('apiPushRegister', SY.tok, t, (isIOS ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'Máy tính') + ' · ' + navigator.userAgent.slice(0, 90));
+      ls.set(PK, t); return t;
+    },
+    async disable() {
+      const t = ls.get(PK); ls.set(PK, '');
+      try { if (t) await API('apiPushUnregister', SY.tok, t); const { m } = await PUSHX.messaging(); await m.deleteToken(); } catch (e) { }
+    },
+    test: () => API('apiPushTest', SY.tok),
+    // Khối giao diện dùng chung (Web App nhân viên + phần mềm HR)
+    card(nv) {
+      const st = PUSHX.state(); if (st === 'off') return '';
+      const btn = nv ? 'm-btn' : 'btn', pri = nv ? 'm-btn lime' : 'btn primary';
+      const msg = {
+        'ios-home': 'Trên iPhone: mở bằng <b>Safari</b> → nút <b>Chia sẻ</b> → <b>Thêm vào Màn hình chính</b>, sau đó mở app từ biểu tượng ngoài màn hình chính rồi bật thông báo tại đây.',
+        unsupported: 'Trình duyệt này chưa hỗ trợ thông báo đẩy. Dùng Chrome (Android, máy tính) hoặc Safari trên iPhone (iOS 16.4 trở lên).',
+        denied: 'Thông báo đang bị chặn. Vào Cài đặt → Thông báo (hoặc biểu tượng ổ khoá trên thanh địa chỉ) để cho phép, rồi tải lại trang.',
+        ready: 'Nhận thông báo ngay trên màn hình khoá: đơn được duyệt, phiếu lương, thông báo của công ty' + (nv ? '' : ', đơn mới cần duyệt') + '.',
+        on: '<b>Đang bật</b> trên thiết bị này.'
+      }[st];
+      const acts = st === 'ready' ? `<button class="${pri}" onclick="__PUSH.ui('on')">Bật thông báo</button>`
+        : st === 'on' ? `<button class="${btn}" onclick="__PUSH.ui('test')">Gửi thử</button><button class="${btn}" onclick="__PUSH.ui('off')">Tắt</button>` : '';
+      return nv ? `<section class="m-card" id="pushCard"><span class="m-label">THÔNG BÁO TRÊN ĐIỆN THOẠI</span><p class="m-muted" style="margin:8px 0 12px">${msg}</p>${acts ? `<div class="m-row" style="gap:8px;flex-wrap:wrap">${acts}</div>` : ''}</section>`
+        : `<div class="card mt" id="pushCard" style="box-shadow:none"><div class="card-h"><h3>Thông báo trên máy này</h3></div><p class="muted" style="margin:0 0 10px">${msg}</p>${acts ? `<div class="actions" style="display:flex;gap:8px">${acts}</div>` : ''}</div>`;
+    },
+    async ui(act) {
+      try {
+        if (act === 'on') { toast('Đang bật thông báo…'); await PUSHX.enable(); toast('Đã bật thông báo trên thiết bị này'); }
+        if (act === 'off') { await PUSHX.disable(); toast('Đã tắt thông báo trên thiết bị này'); }
+        if (act === 'test') { const r = await PUSHX.test(); toast(r.sent ? 'Đã gửi thử – kiểm tra thông báo trên thiết bị' : 'Chưa gửi được' + (r.error ? ': ' + r.error.slice(0, 120) : '')); }
+      } catch (e) { toast(errMsg(e)); }
+      const c = document.getElementById('pushCard'); if (c) c.outerHTML = PUSHX.card(MODE === 'nv');
+    }
+  };
+  // Mỗi lần mở app: làm mới mã thiết bị (FCM có thể đổi mã)
+  function pushRefresh() { if (PUSHX.state() === 'on') PUSHX.enable(true).catch(() => { }); }
+
   /* ---------- khởi động ---------- */
   async function start(token, needChange, pre, fromSnap) {
     if (!pre) box('<div class="gspin">Đang tải dữ liệu…</div>');
@@ -198,6 +269,7 @@
     await loadScripts();
     afterLoad();
     SY.started = true; closeBox();
+    setTimeout(pushRefresh, 2500);
     if (needChange) mustChangePw();
     if (fromSnap) {   // đang hiện dữ liệu trên máy → lấy phần thay đổi từ máy chủ ở nền
       pill('Đang cập nhật…');
@@ -235,8 +307,8 @@
       const u = curUser();
       modal(`<h3>${esc(u.name)}</h3><p class="muted" style="margin-top:-8px">${esc(u.username)} · ${esc(u.role)}</p><div class="form">
         <label class="full">Mật khẩu hiện tại<input class="input" type="password" id="cp0"></label><label>Mật khẩu mới (≥ 6 ký tự)<input class="input" type="password" id="cp1"></label><label>Nhập lại<input class="input" type="password" id="cp2"></label></div>
-        <div class="modal-foot"><button class="btn" id="cpOut">Đăng xuất</button><span style="flex:1"></span><button class="btn" data-close>Đóng</button><button class="btn primary" id="cpGo">Đổi mật khẩu</button></div>`);
-      $('#cpOut').onclick = () => { tok.set(''); dropSnap().then(() => location.reload()); };
+        ${PUSHX.card(false)}<div class="modal-foot"><button class="btn" id="cpOut">Đăng xuất</button><span style="flex:1"></span><button class="btn" data-close>Đóng</button><button class="btn primary" id="cpGo">Đổi mật khẩu</button></div>`);
+      $('#cpOut').onclick = () => { PUSHX.disable().finally(() => { tok.set(''); dropSnap().then(() => location.reload()); }); };
       $('#cpGo').onclick = async () => { if ($('#cp1').value !== $('#cp2').value) return toast('Hai lần nhập không khớp'); try { await API('apiChangePw', SY.tok, $('#cp0').value, $('#cp1').value); closeModal(); toast('Đã đổi mật khẩu'); } catch (e) { toast(errMsg(e)); } };
     };
     window.useUser = () => toast('Mỗi người đăng nhập bằng tài khoản riêng');
@@ -283,10 +355,16 @@
     };
   }
   function afterNV() {
-    window.portalLogin = () => { tok.set(''); ss.set('hrm-portal', ''); dropSnap().then(() => location.reload()); };
+    window.portalLogin = () => { PUSHX.disable().finally(() => { tok.set(''); ss.set('hrm-portal', ''); dropSnap().then(() => location.reload()); }); };
+    const addCard = (m, where) => { const c = PUSHX.card(true); if (!c) return; const hd = m.querySelector('.m-head'); if (where === 'top' && hd) hd.insertAdjacentHTML('afterend', c); else m.insertAdjacentHTML('beforeend', c); };
+    const pnoti = PV.noti; if (pnoti) PV.noti = (m, e) => { pnoti(m, e); addCard(m, 'top'); };
+    const phome = PV.home; if (phome) PV.home = (m, e) => {
+      phome(m, e); const st = PUSHX.state();
+      if ((st === 'ready' || st === 'ios-home') && !ls.get('hrm-push-later')) { addCard(m, 'top'); const c = document.getElementById('pushCard'); if (c) c.insertAdjacentHTML('beforeend', `<button class="m-link" style="margin-top:8px" onclick="localStorage.setItem('hrm-push-later','1');this.closest('#pushCard').remove()">Để sau</button>`); }
+    };
     const pme = PV.me;
     PV.me = (m, e) => {
-      pme(m, e); const b = document.getElementById('pwGo'); if (!b) return;
+      pme(m, e); addCard(m, 'top'); const b = document.getElementById('pwGo'); if (!b) return;
       b.onclick = async () => { const n = $('#pw1').value; if (n.length < 6) return toast('Mật khẩu mới tối thiểu 6 ký tự'); try { await API('apiChangePw', SY.tok, $('#pw0').value, n); toast('Đã đổi mật khẩu'); portalRender(); } catch (err) { toast(errMsg(err)); } };
     };
   }

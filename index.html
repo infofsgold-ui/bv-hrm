@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BV Group – Quản lý nhân sự</title>
+<script>
+  // áp dụng giao diện sáng/tối trước khi vẽ trang để không bị nháy
+  try { const t = localStorage.getItem('hrm-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css?v=f0885394">
+<link rel="preload" as="script" href="assets/data.js?v=ab518825">
+<link rel="preload" as="script" href="assets/app.js?v=41400722">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="#tong-quan" id="brand"></a>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <a class="btn sm" href="nhan-vien.html" target="_blank" style="width:100%;justify-content:center;margin-top:10px">Web App nhân viên ↗</a>
+      <small class="ver">HRM · Phiên bản 1.2</small>
+    </div>
+  </aside>
+  <div class="main-wrap">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"></button>
+      <h1 id="pageTitle">Tổng quan</h1>
+      <select class="input co-sel" id="companySel" aria-label="Chọn công ty" title="Lọc dữ liệu theo công ty"></select>
+      <label class="search"><span id="searchIcon"></span><input id="globalSearch" placeholder="Tìm nhanh nhân viên…"></label>
+      <button class="icon-btn theme-btn" id="themeBtn" aria-label="Chuyển sáng/tối" title="Chuyển sáng/tối"></button>
+      <a class="icon-btn bell" href="#thong-bao" aria-label="Thông báo"><span id="bellIcon"></span><span class="badge" id="bellCount">0</span></a>
+      <div class="me"><div class="avatar">QT</div><div class="me-txt"><b>Quản trị viên</b><small>Admin</small></div></div>
+    </header>
+    <main id="main"></main>
+  </div>
+</div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<script>window.__MODE='hr';window.__API_URL='https://script.google.com/macros/s/AKfycbwZyaSEzBBiBcD-ndOAJ8gt_7UvM5IT6PutBLGv_b39q28bBOaXp9-qjU5KwOWVDngW/exec';window.__LOGO='assets/logo-bvgroup.jpg';window.__SCRIPTS=["assets/data.js?v=ab518825","assets/app.js?v=41400722"];</script>
+<script src="assets/bridge.js?v=2eeb78df"></script>
+</body>
+</html>

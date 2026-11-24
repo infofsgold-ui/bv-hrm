@@ -194,7 +194,7 @@
   const PUSHX = window.__PUSH = {
     // 'off' (chưa cấu hình) · 'unsupported' · 'ios-home' (iPhone: cần thêm vào Màn hình chính) · 'denied' · 'on' · 'ready' (có thể bật)
     state() {
-      if (!window.__FCM || !window.__FCM.vapidKey || window.__GAS_IFRAME) return 'off';
+      if (!window.__FCM || !window.__FCM.config || window.__GAS_IFRAME) return 'off';
       if (isIOS && !standalone()) return 'ios-home';
       if (!('serviceWorker' in navigator) || !('Notification' in window) || !('PushManager' in window)) return 'unsupported';
       if (Notification.permission === 'denied') return 'denied';
@@ -218,7 +218,7 @@
       const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
       if (perm !== 'granted') throw new Error('Bạn chưa cho phép thông báo – bật lại trong Cài đặt của trình duyệt/điện thoại');
       const { m, reg } = await PUSHX.messaging();
-      const t = await m.getToken({ vapidKey: window.__FCM.vapidKey, serviceWorkerRegistration: reg });
+      const t = await m.getToken(Object.assign({ serviceWorkerRegistration: reg }, window.__FCM.vapidKey ? { vapidKey: window.__FCM.vapidKey } : {}));   // không có khoá riêng → dùng khoá mặc định của Firebase
       if (!t) throw new Error('Không lấy được mã thiết bị');
       if (t !== ls.get(PK) || !quiet) await API('apiPushRegister', SY.tok, t, (isIOS ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'Máy tính') + ' · ' + navigator.userAgent.slice(0, 90));
       ls.set(PK, t); return t;

@@ -1,6 +1,6 @@
 // Service worker – nhận Push Notification từ Firebase Cloud Messaging và hiện trên màn hình khoá
-// {"apiKey":"AIzaSyDQsPjB3wHS0L2BNA70kwq_UICFQHmGua4","authDomain":"bvg-hrm.firebaseapp.com","projectId":"bvg-hrm","storageBucket":"bvg-hrm.firebasestorage.app","messagingSenderId":"506413332895","appId":"1:506413332895:web:8f8051c62e7acd1fb625aa"} được thay khi đóng gói (gas/build.js)
-const FCM_CONFIG = __FCM_CONFIG__;
+// Cấu hình Firebase được điền khi đóng gói (gas/build.js)
+const FCM_CONFIG = {"apiKey":"AIzaSyDQsPjB3wHS0L2BNA70kwq_UICFQHmGua4","authDomain":"bvg-hrm.firebaseapp.com","projectId":"bvg-hrm","storageBucket":"bvg-hrm.firebasestorage.app","messagingSenderId":"506413332895","appId":"1:506413332895:web:8f8051c62e7acd1fb625aa"};
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 firebase.initializeApp(FCM_CONFIG);

@@ -7,7 +7,11 @@
   window.__SY = SY;
   const ss = { get: k => { try { return sessionStorage.getItem(k) || ''; } catch (e) { return ''; } }, set: (k, v) => { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch (e) { } } };
   const ls = { get: k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { } } };
-  const tok = { get: () => ls.get(TOK_KEY), set: v => ls.set(TOK_KEY, v) };
+  const tok = {
+    get: () => ls.get(TOK_KEY) || ss.get(TOK_KEY),
+    set: (v, remember) => { ls.set(TOK_KEY, ''); ss.set(TOK_KEY, ''); if (v) (remember === false ? ss : ls).set(TOK_KEY, v); }
+  };
+  const LAST = 'hrm-last-' + MODE;   // tài khoản đăng nhập lần trước (không lưu mật khẩu – mật khẩu để trình duyệt/Keychain lưu)
   /* Bản sao dữ liệu trên máy (IndexedDB): mở lại app hiện ngay, sau đó chỉ tải phần thay đổi */
   const SNAP = 'snap-' + MODE;
   const idb = () => new Promise((res, rej) => { try { const r = indexedDB.open('bv-hrm', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } });
@@ -37,12 +41,14 @@
 
   /* ---------- giao diện đăng nhập ---------- */
   const css = document.createElement('style');
-  css.textContent = `#gasBox{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:20px;background:var(--bg,#f6f4f1)}
-  #gasBox .gb{width:380px;max-width:100%;background:var(--card,#fff);border:1px solid var(--line,#e8e2da);border-radius:22px;padding:26px;box-shadow:0 18px 50px rgba(0,0,0,.08)}
+  css.textContent = `#gasBox{position:fixed;inset:0;z-index:9999;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;overflow:auto;padding:20px;background:var(--bg,#f6f4f1)}
+  #gasBox .gb{box-sizing:border-box;width:380px;max-width:100%;background:var(--card,#fff);border:1px solid var(--line,#e8e2da);border-radius:22px;padding:26px;box-shadow:0 18px 50px rgba(0,0,0,.08)}
   #gasBox .gl{display:flex;justify-content:center;margin-bottom:8px}#gasBox .gl img{height:54px}
   #gasBox h1{font-size:21px;text-align:center;margin:6px 0 4px}#gasBox p{text-align:center;color:var(--muted,#888);font-size:13px;margin:0 0 16px}
   #gasBox label{display:block;font-size:13px;font-weight:600;margin:10px 0 0}#gasBox input{width:100%;margin-top:6px;box-sizing:border-box}
   #gasBox .gbtn{width:100%;margin-top:16px;justify-content:center}#gasBox .gerr{color:#c0392b;font-size:13px;min-height:18px;margin-top:8px;text-align:center}
+  #gasBox .gchk{display:flex;align-items:center;gap:8px;font-weight:500;margin-top:12px;cursor:pointer}#gasBox .gchk input{width:18px;height:18px;margin:0;accent-color:#1D1D1B}
+  #gasBox .gpw{position:relative;display:block}#gasBox .gpw input{padding-right:64px}#gasBox .geye{position:absolute;right:8px;top:50%;transform:translateY(-50%);margin-top:3px;border:0;background:none;color:var(--muted,#888);font:inherit;font-size:13px;cursor:pointer;padding:6px}
   #gasBox .gspin{text-align:center;color:var(--muted,#888);font-size:14px}
   body.portal #gasBox{background:var(--m-bg)}body.portal #gasBox .gb{background:var(--m-card);border:0;border-radius:32px}
   #gasSync{position:fixed;left:14px;bottom:12px;z-index:50;font-size:11.5px;padding:5px 10px;border-radius:99px;background:var(--card,#fff);border:1px solid var(--line,#e8e2da);color:var(--muted,#777);box-shadow:0 2px 8px rgba(0,0,0,.06)}
@@ -52,25 +58,31 @@
   function box(html) { let b = document.getElementById('gasBox'); if (!b) { b = document.createElement('div'); b.id = 'gasBox'; document.body.appendChild(b); } b.innerHTML = `<div class="gb"><div class="gl"><img src="${window.__LOGO}" alt="BV group"></div>${html}</div>`; return b; }
   const closeBox = () => { const b = document.getElementById('gasBox'); if (b) b.remove(); };
   function loginForm(again) {
+    let last = {}; try { last = JSON.parse(ls.get(LAST) || '{}'); } catch (e) { }
     const nv = MODE === 'nv', inCls = nv ? 'm-in' : 'input', btnCls = nv ? 'm-btn lime big gbtn' : 'btn primary gbtn';
     box(`<h1>${nv ? 'Cổng nhân viên' : 'Quản lý nhân sự'}</h1><p>${again ? 'Phiên đăng nhập đã hết hạn – đăng nhập lại để tiếp tục (dữ liệu chưa lưu vẫn được giữ).' : nv ? 'Chấm công · lương · đơn từ' : 'BV Group · đăng nhập tài khoản HR'}</p>
-      <label>${nv ? 'Mã nhân viên' : 'Tên đăng nhập'}<input class="${inCls}" id="gU" autocomplete="username" placeholder="${nv ? 'VD: NV0001' : 'VD: admin'}"></label>
-      <label>Mật khẩu<input class="${inCls}" id="gP" type="password" autocomplete="current-password" placeholder="${nv ? 'Mặc định: ngày sinh ddmmyyyy' : ''}"></label>
-      <button class="${btnCls}" id="gGo">Đăng nhập</button><div class="gerr" id="gErr"></div>
+      <form id="gForm" autocomplete="on" action="#" method="post">
+      <label>${nv ? 'Mã nhân viên' : 'Tên đăng nhập'}<input class="${inCls}" id="gU" name="username" autocomplete="username" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="${nv ? 'VD: NV0001' : 'VD: admin'}" value="${h(last.u)}"></label>
+      <label>Mật khẩu<span class="gpw"><input class="${inCls}" id="gP" name="password" type="password" autocomplete="current-password" placeholder="${nv ? 'Mặc định: ngày sinh ddmmyyyy' : ''}"><button type="button" class="geye" id="gEye" aria-label="Hiện mật khẩu">Hiện</button></span></label>
+      <label class="gchk"><input type="checkbox" id="gRem" ${last.r === false ? '' : 'checked'}><span>Ghi nhớ đăng nhập trên thiết bị này</span></label>
+      <button type="submit" class="${btnCls}" id="gGo">Đăng nhập</button></form><div class="gerr" id="gErr"></div>
       <p style="margin:6px 0 0;font-size:12px">Quên mật khẩu? Liên hệ ${nv ? 'Phòng HCNS' : 'Quản trị hệ thống'}.</p>`);
     const go = async () => {
       const u = document.getElementById('gU').value.trim(), p = document.getElementById('gP').value;
       if (!u || !p) return (document.getElementById('gErr').textContent = 'Nhập đủ tài khoản và mật khẩu');
       document.getElementById('gGo').disabled = true; document.getElementById('gErr').textContent = 'Đang đăng nhập…';
       try {
-        const r = await API(nv ? 'apiPortalLogin' : 'apiLogin', u, p); SY.lastPw = p;
-        tok.set(r.token); SY.tok = r.token;
+        const rem = document.getElementById('gRem').checked;
+        const r = await API(nv ? 'apiPortalLogin' : 'apiLogin', u, p, rem); SY.lastPw = p;
+        tok.set(r.token, rem); SY.tok = r.token;
+        ls.set(LAST, rem ? JSON.stringify({ u, r: true }) : JSON.stringify({ r: false }));
         if (again) { closeBox(); pull().catch(() => { }).then(flush); return; }
         await start(r.token, r.needChange, r.load);
       } catch (e) { document.getElementById('gErr').textContent = errMsg(e); document.getElementById('gGo').disabled = false; }
     };
-    document.getElementById('gGo').onclick = go; document.getElementById('gP').onkeydown = ev => { if (ev.key === 'Enter') go(); };
-    setTimeout(() => document.getElementById('gU') && document.getElementById('gU').focus(), 50);
+    document.getElementById('gForm').onsubmit = ev => { ev.preventDefault(); go(); };
+    document.getElementById('gEye').onclick = () => { const i = document.getElementById('gP'), show = i.type === 'password'; i.type = show ? 'text' : 'password'; document.getElementById('gEye').textContent = show ? 'Ẩn' : 'Hiện'; };
+    setTimeout(() => { const f = document.getElementById(last.u ? 'gP' : 'gU'); if (f) f.focus(); }, 50);
   }
   function mustChangePw() {
     const nv = MODE === 'nv', inCls = nv ? 'm-in' : 'input';

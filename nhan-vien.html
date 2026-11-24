@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="assets/style.css?v=f0885394">
 <link rel="preload" as="script" href="assets/data.js?v=ab518825">
 <link rel="preload" as="script" href="assets/app.js?v=41400722">
-<link rel="preload" as="script" href="assets/portal.js?v=ca44e089">
+<link rel="preload" as="script" href="assets/portal.js?v=0509da41">
 <style>
   /* Web App nhân viên – nền kem ấm, thẻ bo lớn, điểm nhấn xanh chanh, chữ số mảnh */
   :root{
@@ -53,6 +53,16 @@
   .m-pills{display:flex;gap:8px;overflow-x:auto;margin:0 0 14px;padding-bottom:2px}
   .m-pills button{border:1px solid var(--m-line);background:var(--m-card);color:var(--m-ink);border-radius:999px;padding:12px 18px;white-space:nowrap;cursor:pointer;font-size:14px}
   .m-pills button.on{background:var(--m-olive);border-color:var(--m-olive)}
+  .m-ico-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 6px;margin:4px 0 18px}
+  .m-ico-tabs.rt{grid-template-columns:repeat(3,minmax(0,1fr));margin:12px 0 6px}
+  .m-ico-tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;color:var(--m-ink);padding:0;font:inherit;min-width:0}
+  .m-ico-tabs .ic{width:56px;height:56px;border-radius:50%;background:var(--m-card);border:1px solid var(--m-line);display:grid;place-items:center;position:relative;transition:background .15s}
+  .m-ico-tabs.rt .ic{background:var(--m-bg)}
+  .m-ico-tabs .ic svg{width:22px;height:22px}
+  .m-ico-tabs .ic .m-badge{top:-2px;right:-2px}
+  .m-ico-tabs small{font-size:12px;line-height:1.25;text-align:center;color:var(--m-muted);max-width:100%;overflow-wrap:anywhere}
+  .m-ico-tabs button.on .ic{background:var(--m-lime);border-color:var(--m-lime);color:#1D1D1B}
+  .m-ico-tabs button.on small{color:var(--m-ink);font-weight:600}
   .m-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
   .m-chips button{border:1px solid var(--m-line);background:var(--m-bg);color:var(--m-ink);border-radius:999px;padding:9px 14px;cursor:pointer;font-size:13.5px}
   .m-chips button.on{background:var(--m-lime);border-color:var(--m-lime);color:#1D1D1B;font-weight:500}
@@ -129,7 +139,7 @@
 </div>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
 <div class="toast" id="toast"></div>
-<script>window.__MODE='nv';window.__API_URL='https://script.google.com/macros/s/AKfycbwZyaSEzBBiBcD-ndOAJ8gt_7UvM5IT6PutBLGv_b39q28bBOaXp9-qjU5KwOWVDngW/exec';window.__LOGO='assets/logo-bvgroup.jpg';window.__SCRIPTS=["assets/data.js?v=ab518825","assets/app.js?v=41400722","assets/portal.js?v=ca44e089"];</script>
-<script src="assets/bridge.js?v=2eeb78df"></script>
+<script>window.__MODE='nv';window.__API_URL='https://script.google.com/macros/s/AKfycbwZyaSEzBBiBcD-ndOAJ8gt_7UvM5IT6PutBLGv_b39q28bBOaXp9-qjU5KwOWVDngW/exec';window.__LOGO='assets/logo-bvgroup.jpg';window.__SCRIPTS=["assets/data.js?v=ab518825","assets/app.js?v=41400722","assets/portal.js?v=0509da41"];</script>
+<script src="assets/bridge.js?v=aef4449a"></script>
 </body>
 </html>
